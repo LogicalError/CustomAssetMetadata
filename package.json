@@ -1,0 +1,19 @@
+{
+    "name": "com.custom_asset_metadata",
+    "displayName": "Custom Asset Metadata",
+    "version": "1.0.0",
+    "unity": "2020.3",
+    "description": "Adds the ability to store meta data on Assets",
+    "license": "MIT",
+    "author": {
+      "name": "Sander van Rossen",
+      "email": "sander.vanrossen@gmail.com"
+    },
+    "samples": [
+        {
+            "displayName": "Simple example",
+            "description": "Simple example with 2 metadata classes",
+            "path": "Samples~/Simple"
+        }
+    ]
+}
