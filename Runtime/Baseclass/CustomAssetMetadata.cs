@@ -11,4 +11,6 @@ public abstract class CustomAssetMetadata : ScriptableObject
     // These methods are to handle creating and destroying metadata in the editor and not leave the asset dangling
     [Conditional("UNITY_EDITOR")] private void OnEnable() { if (asset != null) MetadataLookup.Register(asset, this); }    
     [Conditional("UNITY_EDITOR")] private void OnDisable() { MetadataLookup.Unregister(asset, this); }
+
+    public UnityEngine.Object GetAssociatedAsset() { return asset; }
 } 

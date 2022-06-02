@@ -54,9 +54,14 @@ public static class InspectorLayout
     {
         int controlID = GUIUtility.GetControlID(s_TitlebarHash, FocusType.Keyboard, position);
         var foldoutPosition = GetInspectorTitleBarObjectFoldoutRenderRect(position, baseStyle);
+        foldoutPosition.x -= 7;
+        foldoutPosition.width += 7;
         position.width += position.x;
         position.x = 0;
         Rect position2 = new Rect(position.x + (float)baseStyle.padding.left + (float)((!skipIconSpacing) ? 20 : 0), position.y + (float)baseStyle.padding.top, EditorGUIUtility.labelWidth, 16f);
+        position2.x -= 7;
+        position2.width += 7;
+
         bool hover = position.Contains(Event.current.mousePosition);
         if (Event.current.type == EventType.Repaint)
         {

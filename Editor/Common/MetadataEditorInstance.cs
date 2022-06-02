@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
@@ -102,6 +102,9 @@ sealed class MetadataEditorInstance : IDisposable
     {
         if (targets == null || targets.Length == 0 || metadata == null || metadata.Length == 0)
             return;
+
+        EditorGUI.indentLevel = 0;
+        EditorGUIUtility.labelWidth = 0;
 
         var rect = GUILayoutUtility.GetRect(GUIContent.none, InspectorLayout.inspectorTitlebar);
         showMetadata = InspectorLayout.FoldoutTitlebar(rect, showMetadata, metadataContent, false, InspectorLayout.inspectorTitlebar, InspectorLayout.inspectorTitlebarText);
@@ -252,6 +255,7 @@ public sealed class MetadataEditor : IDisposable
             GUILayout.BeginVertical();
             if (metadataEditors != null)
             {
+                EditorGUILayout.Space();
                 // We seem to get the metadata in reverse order from the assetdatabase, compared to the order we add them
                 // So to make things feel more consistent, we reverse the order
                 for (int i = metadataEditors.Length - 1; i >= 0; i--)
