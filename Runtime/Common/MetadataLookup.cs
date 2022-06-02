@@ -65,6 +65,10 @@ internal static class MetadataLookup
 
     internal static void Register(UnityEngine.Object asset, CustomAssetMetadata metadata)
     {
+        if (object.ReferenceEquals(asset, null) ||
+            object.ReferenceEquals(metadata, null))
+            return;
+
         if (!table.TryGetValue(asset, out var metadataList))
         {
             metadataList = new List<CustomAssetMetadata>();
@@ -77,6 +81,10 @@ internal static class MetadataLookup
 
     internal static void Unregister(UnityEngine.Object asset, CustomAssetMetadata metadata)
     {
+        if (object.ReferenceEquals(asset, null) ||
+            object.ReferenceEquals(metadata, null))
+            return;
+
         if (!table.TryGetValue(asset, out var metadataList))
             return;
 
@@ -114,9 +122,9 @@ internal static class MetadataLookup
         var lookupAsset = Resources.Load($"{kResourcePath}/{kAssetName}") as MetadataLookupAsset;
         foreach(var item in lookupAsset.allMetadata)
         {
-            if (item is CustomAssetMetadata t && t.asset is T1)
+            if (item is CustomAssetMetadata metadata && metadata.asset is Asset)
             {
-                result.Add(t);
+                result.Add(metadata);
             }
         }
 #endif
@@ -131,7 +139,7 @@ internal static class MetadataLookup
             return;
 
         // TODO: use addressables (if available?) instead to avoid loading every asset into memory
-        foreach (var metadata in GetAllMetadata<UnityEngine.Object>())
+        foreach (var metadata in GetAllMetadata<Material>()) // TODO: figure out a way to efficiently support more types
             MetadataLookup.Register(metadata.asset, metadata);
 
         initialized = true;

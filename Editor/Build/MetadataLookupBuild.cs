@@ -13,13 +13,12 @@ public class MetadataLookupPreprocessBuild : IPreprocessBuildWithReport
 {
     public int callbackOrder { get { return 0; } }
 
-    public static List<(string,Metadata)> GetAllMetadata<Asset,Metadata>() 
-        where Asset    : UnityEngine.Object
-        where Metadata : CustomAssetMetadata
+    public static List<(string, CustomAssetMetadata)> GetAllMetadata<Asset>()
+        where Asset : UnityEngine.Object
     {
         // TODO: figure out if there's a more efficient way of doing this??
         var guids = AssetDatabase.FindAssets($"t:{typeof(Asset).Name}");
-        var result = new List<(string, Metadata)>();
+        var result = new List<(string, CustomAssetMetadata)>();
         for (int i = 0; i < guids.Length; i++)
         {
             var assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);            
@@ -30,10 +29,10 @@ public class MetadataLookupPreprocessBuild : IPreprocessBuildWithReport
             int index = 0;
             foreach (var item in AssetDatabase.LoadAllAssetsAtPath(assetPath))
             {
-                if (item is Metadata t && t.asset is Asset)
+                if (item is CustomAssetMetadata metadata && metadata.asset is Asset)
                 {
                     var name = $"{guids[i]}-{index}";
-                    result.Add((name, t));
+                    result.Add((name, metadata));
                     index++;
                 }
             }
@@ -54,7 +53,7 @@ public class MetadataLookupPreprocessBuild : IPreprocessBuildWithReport
         var list = ScriptableObject.CreateInstance<MetadataLookupAsset>();
         var allMetadata = new List<CustomAssetMetadata>();
         // TODO: use addressables (if available?) instead to avoid loading every asset into memory
-        foreach (var (name,metadata) in GetAllMetadata<UnityEngine.Object, CustomAssetMetadata>())
+        foreach (var (name, metadata) in GetAllMetadata<Material>()) // TODO: figure out a way to efficiently support more types
         {
             var clone = UnityEngine.Object.Instantiate(metadata);
             AssetDatabase.CreateAsset(clone, $"{basePath}/{name}.asset");
