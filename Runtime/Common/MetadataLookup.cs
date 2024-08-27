@@ -1,26 +1,26 @@
-﻿using System;
+﻿
+#if !UNITY_EDITOR
+#define UNITY_RUNTIME
+#endif
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
 internal static class MetadataLookup
 {
     public const string kResourcePath = "AssetMetadata";
-    public const string kAssetName = "list";
+    public const string kAssetName = "list.asset";
 
-    readonly static Dictionary<UnityEngine.Object, List<CustomAssetMetadata>> table = new Dictionary<UnityEngine.Object, List<CustomAssetMetadata>>();
+    readonly static Dictionary<int, List<CustomAssetMetadata>> table = new();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IReadOnlyList<CustomAssetMetadata> GetAllMetadata(UnityEngine.Object asset)
     {
-        Init();
-        if (!table.TryGetValue(asset, out var metadataList))
+        if (!GetAllMetadataForAsset(asset, out var metadataList))
             return null;
         return metadataList;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool GetAllMetadataOfType<Metadata>(UnityEngine.Object asset, List<Metadata> result)
         where Metadata : CustomAssetMetadata
     {
@@ -28,9 +28,7 @@ internal static class MetadataLookup
         if (asset == null)
             return false;
 
-            Init();
-
-        if (!table.TryGetValue(asset, out var metadataList))
+        if (!GetAllMetadataForAsset(asset, out var metadataList))
             return false;
 
         for (int i = 0; i < metadataList.Count; i++)
@@ -41,16 +39,47 @@ internal static class MetadataLookup
         return result.Count > 0;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool HasMetadataOfType(UnityEngine.Object asset, System.Type type)
+	{
+		if (asset == null)
+			return false;
+
+		if (!GetAllMetadataForAsset(asset, out var metadataList))
+			return false;
+
+		for (int i = 0; i < metadataList.Count; i++)
+		{
+			if (metadataList[i] != null &&
+				metadataList[i].GetType() == type)
+				return true;
+		}
+		return false;
+	}
+
+	public static bool HasMetadataOfType<Metadata>(UnityEngine.Object asset)
+		where Metadata : CustomAssetMetadata
+	{
+		if (asset == null)
+			return false;
+
+		if (!GetAllMetadataForAsset(asset, out var metadataList))
+			return false;
+
+		for (int i = 0; i < metadataList.Count; i++)
+		{
+			if (metadataList[i] is Metadata)
+				return true;
+		}
+		return false;
+	}
+
     public static Metadata GetMetadataOfType<Metadata>(UnityEngine.Object asset)
         where Metadata : CustomAssetMetadata
     {
         if (asset == null)
             return null;
 
-        Init();
-
-        if (!table.TryGetValue(asset, out var metadataList))
+        if (!GetAllMetadataForAsset(asset, out var metadataList))
             return null;
 
         for (int i = 0; i < metadataList.Count; i++)
@@ -61,87 +90,124 @@ internal static class MetadataLookup
         return null;
     }
 
+	internal static bool Register(UnityEngine.LazyLoadReference<UnityEngine.Object> reference, CustomAssetMetadata metadata)
+	{
+		if (reference.isBroken || !reference.isSet ||
+			object.ReferenceEquals(metadata, null))
+			return false;
 
+		if (!table.TryGetValue(reference.instanceID, out var metadataList))
+		{
+			metadataList = new List<CustomAssetMetadata>();
+			table[reference.instanceID] = metadataList;
+		}
 
-    internal static void Register(UnityEngine.Object asset, CustomAssetMetadata metadata)
-    {
-        if (object.ReferenceEquals(asset, null) ||
-            object.ReferenceEquals(metadata, null))
-            return;
+		if (!metadataList.Contains(metadata))
+			metadataList.Add(metadata);
+		return true;
+	}
 
-        if (!table.TryGetValue(asset, out var metadataList))
+	internal static void Unregister(UnityEngine.LazyLoadReference<UnityEngine.Object> reference, CustomAssetMetadata metadata)
+	{
+		if (reference.isBroken || !reference.isSet ||
+			object.ReferenceEquals(metadata, null))
+			return;
+
+		if (!table.TryGetValue(reference.instanceID, out var metadataList))
+			return;
+
+		metadataList.Remove(metadata);
+        if (metadataList.Count == 0)
         {
-            metadataList = new List<CustomAssetMetadata>();
-            table[asset] = metadataList;
+            table.Remove(reference.instanceID);
         }
+	}
 
-        if (!metadataList.Contains(metadata))
-            metadataList.Add(metadata);
-    } 
-
-    internal static void Unregister(UnityEngine.Object asset, CustomAssetMetadata metadata)
-    {
-        if (object.ReferenceEquals(asset, null) ||
-            object.ReferenceEquals(metadata, null))
-            return;
-
-        if (!table.TryGetValue(asset, out var metadataList))
-            return;
-
-        if (asset == null)
-        {
-            table.Remove(asset);
-            return;
-        }
-
-        metadataList.Remove(metadata);
-    }
-
-    static IReadOnlyList<CustomAssetMetadata> GetAllMetadata<Asset>()
-        where Asset : UnityEngine.Object
-    {
-        var result = new List<CustomAssetMetadata>();
 #if UNITY_EDITOR
-        // TODO: figure out if there's a more efficient way of doing this??
-        var guids = UnityEditor.AssetDatabase.FindAssets("t:" + typeof(Asset).Name);
-        for (int i = 0; i < guids.Length; i++)
-        {
-            var assetPath = UnityEditor.AssetDatabase.GUIDToAssetPath(guids[i]);            
-            if (assetPath.EndsWith(".unity")) // Cannot handle assets that are stored within a scene file
-                continue;
+	static bool RegisterMetadataForAsset(string assetPath)
+	{
+		if (Application.isEditor && string.IsNullOrEmpty(assetPath))
+			return false;
 
-            foreach (var item in UnityEditor.AssetDatabase.LoadAllAssetsAtPath(assetPath))
-            {
-                if (item is CustomAssetMetadata metadata && metadata.asset is Asset)
-                {
-                    result.Add(metadata);
-                }
-            }
-        }
-#else
-        var lookupAsset = Resources.Load($"{kResourcePath}/{kAssetName}") as MetadataLookupAsset;
-        foreach(var item in lookupAsset.allMetadata)
+		bool foundAny = false;
+		foreach (var item in UnityEditor.AssetDatabase.LoadAllAssetsAtPath(assetPath))
+		{
+			if (item is not CustomAssetMetadata metadata)
+				continue;
+
+			foundAny = MetadataLookup.Register(metadata.reference.asset, metadata) || foundAny;
+		}
+		return foundAny;
+	}
+#endif
+
+	static bool GetAllMetadataForAsset(UnityEngine.Object asset, out List<CustomAssetMetadata> result)
+    {
+        EnsureInitialized();
+        if (table.TryGetValue(asset.GetInstanceID(), out result))
+            return true;
+#if UNITY_EDITOR
+        if (Application.isEditor)
         {
-            if (item is CustomAssetMetadata metadata && metadata.asset is Asset)
-            {
-                result.Add(metadata);
-            }
+            var assetPath = UnityEditor.AssetDatabase.GetAssetPath(asset);
+            RegisterMetadataForAsset(assetPath);
+            if (table.TryGetValue(asset.GetInstanceID(), out result))
+                return true;
         }
 #endif
-        return result;
+        result = null;
+        return false;
     }
 
-    static bool initialized = false;
+    [System.Diagnostics.Conditional("UNITY_RUNTIME")]
+    static void InitializeRuntime()
+	{
+#if UNITY_EDITOR
+		if (!Application.isEditor)
+#endif
+		{
+            var assetpath = $"{kResourcePath}/{kAssetName}";
+			var lookupAsset = Resources.Load(assetpath) as MetadataLookupAsset;
+            if (lookupAsset == null)
+			{
+				Debug.LogError($"Failed to load {assetpath}");
+                return;
+			}
 
-    static void Init()
+			foreach (var metadata in lookupAsset.allMetadata)
+			{
+				if (metadata != null)
+					continue;
+				MetadataLookup.Register(metadata.reference, metadata);
+            }
+        }
+    }
+
+	[System.Diagnostics.Conditional("UNITY_EDITOR")]
+	static void InitializeEditor()
+	{
+#if UNITY_EDITOR
+        if (Application.isEditor)
+		{
+			var allMetadata = Resources.FindObjectsOfTypeAll<CustomAssetMetadata>();
+			foreach (var metadata in allMetadata)
+			{
+				if (metadata != null)
+					continue;
+				var assetPath = UnityEditor.AssetDatabase.GetAssetPath(metadata);
+				RegisterMetadataForAsset(assetPath);
+			}
+        }
+#endif
+    }
+
+    static bool s_Initialized = false;
+    static void EnsureInitialized()
     {
-        if (initialized)
+        if (s_Initialized) 
             return;
-
-        // TODO: use addressables (if available?) instead to avoid loading every asset into memory
-        foreach (var metadata in GetAllMetadata<Material>()) // TODO: figure out a way to efficiently support more types
-            MetadataLookup.Register(metadata.asset, metadata);
-
-        initialized = true;
-    }
+        s_Initialized = true;
+        InitializeRuntime();
+        InitializeEditor();
+	}
 }

@@ -1,19 +1,17 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 using System.Reflection;
-using UnityEditor.Rendering;
 
 public static class InspectorLayout
 {
 
-    static GUIStyle m_TitlebarFoldout = null;
-    static GUIStyle m_InspectorTitlebar = null;
-    static GUIStyle m_InspectorTitlebarText = null;
+    static GUIStyle s_TitlebarFoldout = null;
+    static GUIStyle s_InspectorTitlebar = null;
+    static GUIStyle s_InspectorTitlebarText = null;
 
-    public static GUIStyle titlebarFoldout => (m_InspectorTitlebarText == null) ? GetStyle("Titlebar Foldout") : m_TitlebarFoldout;
-    public static GUIStyle inspectorTitlebar => (m_InspectorTitlebarText == null) ? GetStyle("IN Title") : m_InspectorTitlebar;
-    public static GUIStyle inspectorTitlebarText => (m_InspectorTitlebarText == null) ? GetStyle("IN TitleText") : m_InspectorTitlebarText;
+    public static GUIStyle TitlebarFoldout => (s_InspectorTitlebarText == null) ? GetStyle("Titlebar Foldout") : s_TitlebarFoldout;
+    public static GUIStyle InspectorTitlebar => (s_InspectorTitlebarText == null) ? GetStyle("IN Title") : s_InspectorTitlebar;
+    public static GUIStyle InspectorTitlebarText => (s_InspectorTitlebarText == null) ? GetStyle("IN TitleText") : s_InspectorTitlebarText;
 
     static GUIStyle GetStyle(string styleName)
     {
@@ -29,14 +27,14 @@ public static class InspectorLayout
 
     internal static Rect GetInspectorTitleBarObjectFoldoutRenderRect(Rect rect, GUIStyle baseStyle)
     {
-        var offsetX = (float)titlebarFoldout.margin.left + 1f;
+        var offsetX = (float)TitlebarFoldout.margin.left + 1f;
         var offsetY = (rect.height - 13f) / 2f + (float)(baseStyle?.padding.top ?? 0);
 
         return new Rect(rect.x + offsetX, rect.y + offsetY, rect.width - offsetX, 13f);
     }
 
     public static FieldInfo m_LastControlIdField = typeof(EditorGUIUtility).GetField("s_LastControlID", BindingFlags.Static | BindingFlags.NonPublic);
-    public static int lastControlId
+    public static int LastControlId
     {
         get
         {
@@ -80,12 +78,12 @@ public static class InspectorLayout
 
     public static bool FoldoutTitlebar(Rect position, bool foldout, GUIContent label, bool skipIconSpacing)
     {
-        return FoldoutTitlebar(position, foldout, label, skipIconSpacing, inspectorTitlebar, inspectorTitlebarText);
+        return FoldoutTitlebar(position, foldout, label, skipIconSpacing, InspectorTitlebar, InspectorTitlebarText);
     }
 
     public static bool FoldoutTitlebar(bool foldout, GUIContent label, bool skipIconSpacing)
     {
-        return FoldoutTitlebar(foldout, label, skipIconSpacing, inspectorTitlebar, inspectorTitlebarText);
+        return FoldoutTitlebar(foldout, label, skipIconSpacing, InspectorTitlebar, InspectorTitlebarText);
     }
 
     public static bool FoldoutTitlebar(bool foldout, GUIContent label, bool skipIconSpacing, GUIStyle baseStyle, GUIStyle textStyle)

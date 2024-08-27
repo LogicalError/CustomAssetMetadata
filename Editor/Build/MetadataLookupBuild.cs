@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
@@ -13,33 +11,6 @@ public class MetadataLookupPreprocessBuild : IPreprocessBuildWithReport
 {
     public int callbackOrder { get { return 0; } }
 
-    public static List<(string, CustomAssetMetadata)> GetAllMetadata<Asset>()
-        where Asset : UnityEngine.Object
-    {
-        // TODO: figure out if there's a more efficient way of doing this??
-        var guids = AssetDatabase.FindAssets($"t:{typeof(Asset).Name}");
-        var result = new List<(string, CustomAssetMetadata)>();
-        for (int i = 0; i < guids.Length; i++)
-        {
-            var assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);            
-            // Sadly any asset included in a scene file cannot be loaded
-            if (assetPath.EndsWith(".unity"))
-                continue;
-
-            int index = 0;
-            foreach (var item in AssetDatabase.LoadAllAssetsAtPath(assetPath))
-            {
-                if (item is CustomAssetMetadata metadata && metadata.asset is Asset)
-                {
-                    var name = $"{guids[i]}-{index}";
-                    result.Add((name, metadata));
-                    index++;
-                }
-            }
-        }
-        return result;
-    }
-
     public static bool HadResourcesDirectory = false;
 
     public void OnPreprocessBuild(BuildReport report)
@@ -51,16 +22,17 @@ public class MetadataLookupPreprocessBuild : IPreprocessBuildWithReport
             System.IO.Directory.Delete(basePath, true);
         System.IO.Directory.CreateDirectory(basePath);
         var list = ScriptableObject.CreateInstance<MetadataLookupAsset>();
-        var allMetadata = new List<CustomAssetMetadata>();
-        // TODO: use addressables (if available?) instead to avoid loading every asset into memory
-        foreach (var (name, metadata) in GetAllMetadata<Material>()) // TODO: figure out a way to efficiently support more types
-        {
-            var clone = UnityEngine.Object.Instantiate(metadata);
-            AssetDatabase.CreateAsset(clone, $"{basePath}/{name}.asset");
-            allMetadata.Add(clone);
+		var allMetadata = Resources.FindObjectsOfTypeAll<CustomAssetMetadata>();
+        int index = 0;
+        for (int i = 0; i < allMetadata.Length; i++)
+		{
+			var clone = UnityEngine.Object.Instantiate(allMetadata[i]);
+			var name = $"{allMetadata[i].GetInstanceID()}-{index}"; index++;
+			AssetDatabase.CreateAsset(clone, $"{basePath}/{name}.asset");
+            allMetadata[i] = clone;
         }
-        list.allMetadata = allMetadata.ToArray();
-        AssetDatabase.CreateAsset(list, $"{basePath}/{MetadataLookup.kAssetName}.asset");
+        list.allMetadata = allMetadata;
+		AssetDatabase.CreateAsset(list, $"{basePath}/{MetadataLookup.kAssetName}.asset");
         AssetDatabase.StopAssetEditing();
     }
 

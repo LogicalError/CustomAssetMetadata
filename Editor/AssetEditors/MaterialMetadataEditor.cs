@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using UnityEditor;
 
@@ -6,23 +5,13 @@ using UnityEditor;
 public class MaterialMetadataEditor : MaterialEditor
 {
     MetadataEditor metadataEditor;
-
-    public override void OnEnable()
-    {
-        base.OnEnable();
-        metadataEditor = new MetadataEditor(targets);
-    }
-
-    public override void OnDisable()
-    {
-        base.OnDisable();
-        metadataEditor.Dispose();
-        metadataEditor = null;
-    }
-
-    public override void OnInspectorGUI()
-    {
+    public override void OnEnable() { base.OnEnable(); metadataEditor = new MetadataEditor(targets); }
+    public override void OnDisable() { base.OnDisable(); metadataEditor.Dispose(); metadataEditor = null; }
+    public override void OnInspectorGUI() 
+    { 
         base.OnInspectorGUI();
+        if (!GUI.enabled)
+            return;
         metadataEditor.OnInspectorGUI();
     }
 }

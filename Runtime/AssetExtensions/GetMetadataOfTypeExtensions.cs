@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using UnityEngine;
 
-public static class MaterialExtensions
+public static class GetMetadataOfTypeExtensions
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Metadata GetMetadataOfType<Metadata>(this Material asset)
@@ -13,4 +13,6 @@ public static class MaterialExtensions
     {
         return MetadataLookup.GetMetadataOfType<Metadata>(asset);
     }
+
+
 }

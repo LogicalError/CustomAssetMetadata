@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class TestComponent : MonoBehaviour
 {
@@ -9,13 +7,13 @@ public class TestComponent : MonoBehaviour
     void Start()
     {
         var textMesh = GetComponent<TextMesh>();
-        var testMetaData1 = material.GetMetadataOfType<TestMetadata1>();
-        if (testMetaData1 != null)
+        var CanOnlyBeAddedOnce = material.GetMetadataOfType<CanOnlyBeAddedOnce>();
+        if (CanOnlyBeAddedOnce != null)
         {
-            textMesh.text = testMetaData1.myText;
+            textMesh.text = CanOnlyBeAddedOnce.myText;
         } else
         {
-            textMesh.text = $"Could not find {nameof(TestMetadata1)}";
+            textMesh.text = $"Could not find {nameof(CanOnlyBeAddedOnce)}";
         }
     }
 }

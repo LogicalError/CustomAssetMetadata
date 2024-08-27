@@ -1,6 +1,7 @@
 using System;
-using UnityEngine;
 using UnityEditor;
+using UnityEngine;
+using UnityEngine.Pool;
 using System.Collections.Generic;
 
 /// <summary>
@@ -22,7 +23,7 @@ sealed class MetadataEditorInstance : IDisposable
 
     public static MetadataEditorInstance Create(UnityEngine.Object[] targets, CustomAssetMetadata[] metadata, Type type)
     {
-        var metadataName = ObjectNames.NicifyVariableName(type.Name);
+        var metadataName = AssetMetadataUtility.GetDisplayName(type);
         var metadataKeyName = type.FullName;
         return new MetadataEditorInstance
         {
@@ -43,9 +44,9 @@ sealed class MetadataEditorInstance : IDisposable
         metaDataEditor = null;
     }
 
-    public bool destroyed { get { return metadata == null; } }
+    public bool Destroyed { get { return metadata == null; } }
 
-    public bool mixedValues
+    public bool MixedValues
     {
         get
         {
@@ -106,15 +107,16 @@ sealed class MetadataEditorInstance : IDisposable
         EditorGUI.indentLevel = 0;
         EditorGUIUtility.labelWidth = 0;
 
-        var rect = GUILayoutUtility.GetRect(GUIContent.none, InspectorLayout.inspectorTitlebar);
-        showMetadata = InspectorLayout.FoldoutTitlebar(rect, showMetadata, metadataContent, false, InspectorLayout.inspectorTitlebar, InspectorLayout.inspectorTitlebarText);
-        var controlId = InspectorLayout.lastControlId;
+        var rect = GUILayoutUtility.GetRect(GUIContent.none, InspectorLayout.InspectorTitlebar);
+        showMetadata = InspectorLayout.FoldoutTitlebar(rect, showMetadata, metadataContent, false, InspectorLayout.InspectorTitlebar, InspectorLayout.InspectorTitlebarText);
+        var controlId = InspectorLayout.LastControlId;
         if (showMetadata)
         {
-            if (mixedValues)
+            if (MixedValues)
             {
-                // TODO: show proper message for mixed values
-                EditorGUILayout.LabelField("...");
+                EditorGUI.showMixedValue = true;
+                EditorGUILayout.LabelField("…");
+                EditorGUI.showMixedValue = false;
             } else
             {
                 EditorGUILayout.Space(3);
@@ -129,7 +131,6 @@ sealed class MetadataEditorInstance : IDisposable
         {
             case EventType.MouseUp:
             {
-                //EditorGUIUtility.hotControl == controlId)
                 if (evt.button == 1 && rect.Contains(evt.mousePosition))
                 {
                     var menu = new GenericMenu();
@@ -145,7 +146,7 @@ sealed class MetadataEditorInstance : IDisposable
     {
         if (metadata != null)
         {
-            for (int i = 0; i < metadata.Length; i++)
+            for (int i = metadata.Length - 1; i >= 0; i--)
             {
                 AssetMetadataUtility.Destroy(metadata[i]);
             }
@@ -157,9 +158,9 @@ sealed class MetadataEditorInstance : IDisposable
 
 public sealed class MetadataEditor : IDisposable
 {
-    bool                        canOpenForEdit;
-    UnityEngine.Object[]        targets;
-    MetadataEditorInstance[]    metadataEditors;
+    readonly bool                 canOpenForEdit;
+    readonly UnityEngine.Object[] targets;
+    MetadataEditorInstance[]      metadataEditors;
 
     public MetadataEditor(UnityEngine.Object[] targets)
     {
@@ -188,9 +189,22 @@ public sealed class MetadataEditor : IDisposable
             }
             metadataEditors = null;
         }
-    }
+	}
 
-    public void AddMetadata(Type type)
+	public bool CanAddMetadataType(Type type)
+	{
+		if (type == null || targets == null || targets.Length == 0)
+			return false;
+
+		for (int i = 0; i < targets.Length; i++)
+		{
+            if (!AssetMetadataUtility.CanAddMetadataType(targets[i], type))
+                return false;
+		}
+        return true;
+	}
+
+	public void AddMetadata(Type type)
     {
         if (type == null || targets == null || targets.Length == 0)
             return;
@@ -204,11 +218,14 @@ public sealed class MetadataEditor : IDisposable
     static MetadataEditorInstance[] CreateEditors(UnityEngine.Object[] targets)
     {
         if (targets == null)
+        {
+            Debug.Log("targets == null");
             return null;
+        }
 
-        var types               = new List<Type>();
-        var typeMetadata        = new List<List<CustomAssetMetadata>>();
-        var temporaryMetadata   = new List<CustomAssetMetadata>();
+        var types               = ListPool<Type>.Get();
+        var typeMetadata        = ListPool<List<CustomAssetMetadata>>.Get();
+        var temporaryMetadata   = ListPool<CustomAssetMetadata>.Get();
 
         AssetMetadataUtility.GetAll(targets[0], temporaryMetadata);
         for (int i = 0; i < temporaryMetadata.Count; i++)
@@ -236,57 +253,93 @@ public sealed class MetadataEditor : IDisposable
             metadataEditors[i] = MetadataEditorInstance.Create(targets, typeMetadata[i].ToArray(), types[i]);
         }
 
+        ListPool<Type>.Release(types);
+        ListPool<List<CustomAssetMetadata>>.Release(typeMetadata);
+        ListPool<CustomAssetMetadata>.Release(temporaryMetadata);
+
         return metadataEditors;
     }
+
+    static GUILayoutOption[] addMetadataButtonOptions = {
+		GUILayout.Width(230), GUILayout.Height(24), 
+        GUILayout.ExpandWidth(false)
+	};
 
     public void OnInspectorGUI()
     {
         using (new EditorGUI.DisabledScope(!canOpenForEdit))
         {
-            if (metadataEditors == null)
-                metadataEditors = CreateEditors(targets);
-            var editors = new MetadataEditorInstance[metadataEditors.Length];
             if (targets == null || !AssetMetadataUtility.HaveMetadataTypes)
                 return;
 
+            // TODO: support multiple targets
+            if (targets.Length > 1)
+                return;
+
+			metadataEditors ??= CreateEditors(targets);
+            if (metadataEditors == null)
+                return;
 
             // TODO: make it possible to re-order metadata like Components on GameObjects
 
             GUILayout.BeginVertical();
-            if (metadataEditors != null)
+            EditorGUILayout.Space();
+            // We seem to get the metadata in reverse order from the assetdatabase, compared to the order we add them
+            // So to make things feel more consistent, we reverse the order
+            for (int i = metadataEditors.Length - 1; i >= 0; i--)
             {
-                EditorGUILayout.Space();
-                // We seem to get the metadata in reverse order from the assetdatabase, compared to the order we add them
-                // So to make things feel more consistent, we reverse the order
-                for (int i = metadataEditors.Length - 1; i >= 0; i--)
-                {
-                    metadataEditors[i].OnInspectorGUI();
-                }
+                metadataEditors[i].OnInspectorGUI();
             }
 
             EditorGUILayout.Space();
 
-            using (new EditorGUI.DisabledScope(metadataEditors == null || !AssetMetadataUtility.HaveMetadataTypes))
+			GUILayout.BeginHorizontal();
+			GUILayout.FlexibleSpace();
+            List<Type> filteredMetadata = ListPool<Type>.Get();
+            try
             {
-                if (GUILayout.Button("Add Metadata"))
+                var canAddMetadata = AssetMetadataUtility.HaveMetadataTypes;
+                if (canAddMetadata)
                 {
-                    // TODO: have a nicer menu, more like the "add components" menu
-                    // TODO: support putting attribute on metadata for name in menu
-                    var menu = new GenericMenu();
                     foreach (var type in AssetMetadataUtility.AllMetadataTypes)
                     {
-                        menu.AddItem(new GUIContent(ObjectNames.NicifyVariableName(type.Name)), false, delegate ()
-                        {
-                            AddMetadata(type);
-                            DestroyEditors(ref metadataEditors);
-                            metadataEditors = CreateEditors(targets);
-                        });
+                        if (!CanAddMetadataType(type))
+                            continue;
+                        filteredMetadata.Add(type);
                     }
-                    menu.ShowAsContext();
+                    canAddMetadata = filteredMetadata.Count > 0;
+                }
+                using (new EditorGUI.DisabledScope(!canAddMetadata))
+                {
+                    if (GUILayout.Button("Add Metadata", addMetadataButtonOptions))
+                    {
+                        // TODO: have a nicer dropdownmenu, more like the "add components" menu
+                        var menu = new GenericMenu();
+                        foreach (var type in filteredMetadata)
+                        {
+                            if (!CanAddMetadataType(type))
+                                continue;
+
+                            var menuName = AssetMetadataUtility.GetMenuName(type);
+                            menu.AddItem(new GUIContent(menuName), false, delegate ()
+                            {
+                                AddMetadata(type);
+                                DestroyEditors(ref metadataEditors);
+                                metadataEditors = CreateEditors(targets);
+                            });
+                        }
+                        menu.ShowAsContext();
+                    }
                 }
             }
+            finally
+            {
+                ListPool<Type>.Release(filteredMetadata);
+            }
+			GUILayout.FlexibleSpace();
+			GUILayout.EndHorizontal();
 
-            GUILayout.EndVertical();
+			GUILayout.EndVertical();
         }
     }
 }
