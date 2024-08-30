@@ -10,4 +10,6 @@ public abstract class CustomAssetMetadata : ScriptableObject
 	// These methods are to handle creating and destroying metadata in the editor and not leave the asset dangling
 	[Conditional("UNITY_EDITOR")] private void OnEnable() { if (Application.isEditor && reference.isSet && !reference.isBroken) MetadataLookup.Register(reference, this); }    
     [Conditional("UNITY_EDITOR")] private void OnDisable() { if (Application.isEditor && reference.isSet && !reference.isBroken) MetadataLookup.Unregister(reference, this); }
+
+	public virtual void OnReset() { }
 } 

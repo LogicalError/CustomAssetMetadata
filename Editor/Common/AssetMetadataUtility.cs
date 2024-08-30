@@ -149,7 +149,8 @@ public static class AssetMetadataUtility
         {
 			assetMetadata.name = type.Name;
             assetMetadata.reference = target;
-            AssetDatabase.AddObjectToAsset(assetMetadata, assetPath);
+            assetMetadata.OnReset();
+			AssetDatabase.AddObjectToAsset(assetMetadata, assetPath);
             AssetDatabase.ImportAsset(assetPath);
             AssetDatabase.Refresh();
             return assetMetadata;
