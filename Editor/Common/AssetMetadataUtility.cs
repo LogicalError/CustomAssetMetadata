@@ -94,8 +94,7 @@ public static class AssetMetadataUtility
 
 	public static string GetDisplayName(Type metadataType)
 	{
-		if (metadataType == null)
-			return null;
+		if (metadataType == null) throw new NullReferenceException(nameof(metadataType));
 		EnsureInitialized();
 		if (metadataNames.TryGetValue(metadataType, out var value))
 			return value.displayName;
@@ -104,8 +103,7 @@ public static class AssetMetadataUtility
 
 	public static string GetMenuName(Type metadataType)
 	{
-        if (metadataType == null)
-            return null;
+		if (metadataType == null) throw new NullReferenceException(nameof(metadataType));
 		EnsureInitialized();
         if (metadataNames.TryGetValue(metadataType, out var value))
             return value.menuPath;
@@ -113,8 +111,11 @@ public static class AssetMetadataUtility
 	}
 
 	public static void GetAll(UnityEngine.Object target, List<CustomAssetMetadata> metadata)
-    {
-        var assetPath = AssetDatabase.GetAssetPath(target);
+	{
+		if (target == null || ReferenceEquals(target, null)) throw new NullReferenceException(nameof(target));
+		if (metadata == null) throw new NullReferenceException(nameof(metadata));
+		EnsureInitialized();
+		var assetPath = AssetDatabase.GetAssetPath(target);
         if (assetPath == null ||
             string.IsNullOrEmpty(assetPath))
             return;
@@ -130,8 +131,11 @@ public static class AssetMetadataUtility
     }
 
     public static CustomAssetMetadata Add(UnityEngine.Object target, Type type)
-    {
-        if (!CanAddMetadataType(target, type))
+	{
+		if (target == null || ReferenceEquals(target, null)) throw new NullReferenceException(nameof(target));
+		if (type == null) throw new NullReferenceException(nameof(type));
+		EnsureInitialized();
+		if (!CanAddMetadataType(target, type))
             return null;
 
 		var assetPath = AssetDatabase.GetAssetPath(target);
@@ -161,9 +165,10 @@ public static class AssetMetadataUtility
 	}
 
 	public static bool CanAddMetadataType(UnityEngine.Object target, Type type)
-    {
-        if (ReferenceEquals(target, null) || target == null)
-            return false;
+	{
+		if (type == null) throw new NullReferenceException(nameof(type));
+		if (target == null || ReferenceEquals(target, null)) throw new NullReferenceException(nameof(target));
+		EnsureInitialized();
         if (disallowMultipleMetadataLookup.Contains(type))
         {
             if (MetadataLookup.HasMetadataOfType(target, type))
@@ -184,15 +189,17 @@ public static class AssetMetadataUtility
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static CustomAssetMetadata Add<Metadata>(UnityEngine.Object target)
         where Metadata : CustomAssetMetadata
-    {
-        return Add(target, typeof(Metadata));
+	{
+		if (target == null || ReferenceEquals(target, null)) throw new NullReferenceException(nameof(target));
+		EnsureInitialized();
+		return Add(target, typeof(Metadata));
     }
 
     public static void Destroy<Metadata>(Metadata metadata)
         where Metadata : CustomAssetMetadata
-    {
-        if (metadata == null)
-            return;
+	{
+		if (metadata == null || ReferenceEquals(metadata, null)) throw new NullReferenceException(nameof(metadata));
+		EnsureInitialized();
 
         var assetPath = AssetDatabase.GetAssetPath(metadata);
         if (assetPath == null)
