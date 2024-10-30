@@ -1,7 +1,7 @@
 {
     "name": "com.custom_asset_metadata",
     "displayName": "Custom Asset Metadata",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "unity": "2020.3",
     "description": "Adds the ability to store meta data on Assets",
     "license": "MIT",

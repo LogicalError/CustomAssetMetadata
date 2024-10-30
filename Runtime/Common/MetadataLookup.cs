@@ -1,14 +1,15 @@
-﻿
+
 #if !UNITY_EDITOR
 #define UNITY_RUNTIME
 #endif
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
 internal static class MetadataLookup
 {
-    public const string kResourcePath = "AssetMetadata";
+    public const string kResourcePath = "__AssetMetadata";
     public const string kAssetName = "list.asset";
 
     readonly static Dictionary<int, List<CustomAssetMetadata>> table = new();
@@ -110,7 +111,7 @@ internal static class MetadataLookup
 	internal static void Unregister(UnityEngine.LazyLoadReference<UnityEngine.Object> reference, CustomAssetMetadata metadata)
 	{
 		if (reference.isBroken || !reference.isSet ||
-			object.ReferenceEquals(metadata, null))
+			object.ReferenceEquals(metadata, null)) 
 			return;
 
 		if (!table.TryGetValue(reference.instanceID, out var metadataList))
@@ -119,7 +120,7 @@ internal static class MetadataLookup
 		metadataList.Remove(metadata);
         if (metadataList.Count == 0)
         {
-            table.Remove(reference.instanceID);
+			table.Remove(reference.instanceID);
         }
 	}
 
@@ -130,32 +131,41 @@ internal static class MetadataLookup
 			return false;
 
 		bool foundAny = false;
-		foreach (var item in UnityEditor.AssetDatabase.LoadAllAssetsAtPath(assetPath))
+		var subAssets = UnityEditor.AssetDatabase.LoadAllAssetRepresentationsAtPath(assetPath);		
+		foreach (var item in subAssets)
 		{
 			if (item is not CustomAssetMetadata metadata)
 				continue;
 
 			foundAny = MetadataLookup.Register(metadata.reference.asset, metadata) || foundAny;
 		}
+		UnityEditor.EditorUtility.UnloadUnusedAssetsImmediate();
 		return foundAny;
 	}
 #endif
 
 	static bool GetAllMetadataForAsset(UnityEngine.Object asset, out List<CustomAssetMetadata> result)
     {
-        EnsureInitialized();
-        if (table.TryGetValue(asset.GetInstanceID(), out result))
-            return true;
+		if (asset)
+		{
+			EnsureInitialized();
+			if (table.TryGetValue(asset.GetInstanceID(), out result))
+				return true;
 #if UNITY_EDITOR
-        if (Application.isEditor)
-        {
-            var assetPath = UnityEditor.AssetDatabase.GetAssetPath(asset);
-            RegisterMetadataForAsset(assetPath);
-            if (table.TryGetValue(asset.GetInstanceID(), out result))
-                return true;
-        }
+			if (Application.isEditor)
+			{
+				var assetPath = UnityEditor.AssetDatabase.GetAssetPath(asset);
+				if (!RegisterMetadataForAsset(assetPath))
+				{
+					result = null;
+					return false;
+				}
+				if (table.TryGetValue(asset.GetInstanceID(), out result))
+					return true;
+			}
 #endif
-        result = null;
+		}
+		result = null;
         return false;
     }
 
@@ -192,7 +202,7 @@ internal static class MetadataLookup
 			var allMetadata = Resources.FindObjectsOfTypeAll<CustomAssetMetadata>();
 			foreach (var metadata in allMetadata)
 			{
-				if (metadata != null)
+				if (!metadata)
 					continue;
 				var assetPath = UnityEditor.AssetDatabase.GetAssetPath(metadata);
 				RegisterMetadataForAsset(assetPath);
