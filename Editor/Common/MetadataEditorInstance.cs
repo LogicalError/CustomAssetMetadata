@@ -115,7 +115,7 @@ sealed class MetadataEditorInstance : IDisposable
             if (MixedValues)
             {
                 EditorGUI.showMixedValue = true;
-                EditorGUILayout.LabelField("…");
+                EditorGUILayout.LabelField("\u2026");
                 EditorGUI.showMixedValue = false;
             } else
             {
