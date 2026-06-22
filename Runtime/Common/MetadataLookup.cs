@@ -12,7 +12,7 @@ internal static class MetadataLookup
     public const string kResourcePath = "__AssetMetadata";
     public const string kAssetName = "list.asset";
 
-    readonly static Dictionary<int, List<CustomAssetMetadata>> table = new();
+    readonly static Dictionary<EntityId, List<CustomAssetMetadata>> table = new();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IReadOnlyList<CustomAssetMetadata> GetAllMetadata(UnityEngine.Object asset)
@@ -97,10 +97,10 @@ internal static class MetadataLookup
 			object.ReferenceEquals(metadata, null))
 			return false;
 
-		if (!table.TryGetValue(reference.instanceID, out var metadataList))
+		if (!table.TryGetValue(reference.entityId, out var metadataList))
 		{
 			metadataList = new List<CustomAssetMetadata>();
-			table[reference.instanceID] = metadataList;
+			table[reference.entityId] = metadataList;
 		}
 
 		if (!metadataList.Contains(metadata))
@@ -114,13 +114,13 @@ internal static class MetadataLookup
 			object.ReferenceEquals(metadata, null)) 
 			return;
 
-		if (!table.TryGetValue(reference.instanceID, out var metadataList))
+		if (!table.TryGetValue(reference.entityId, out var metadataList))
 			return;
 
 		metadataList.Remove(metadata);
         if (metadataList.Count == 0)
         {
-			table.Remove(reference.instanceID);
+			table.Remove(reference.entityId);
         }
 	}
 
@@ -149,7 +149,7 @@ internal static class MetadataLookup
 		if (asset)
 		{
 			EnsureInitialized();
-			if (table.TryGetValue(asset.GetInstanceID(), out result))
+			if (table.TryGetValue(asset.GetEntityId(), out result))
 				return true;
 #if UNITY_EDITOR
 			if (Application.isEditor)
@@ -160,7 +160,7 @@ internal static class MetadataLookup
 					result = null;
 					return false;
 				}
-				if (table.TryGetValue(asset.GetInstanceID(), out result))
+				if (table.TryGetValue(asset.GetEntityId(), out result))
 					return true;
 			}
 #endif

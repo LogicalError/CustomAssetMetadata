@@ -18,7 +18,7 @@ public class MetadataLookupPreprocessBuild : IPreprocessBuildWithReport
     CustomAssetMetadata CloneCustomAssetMetadata(CustomAssetMetadata assetMetadata, string basePath, ref int index)
     {
         var clone = UnityEngine.Object.Instantiate(assetMetadata);
-        var name = $"{assetMetadata.GetInstanceID()}-{index}"; index++;
+        var name = $"{UnityEngine.EntityId.ToULong(assetMetadata.GetEntityId())}-{index}"; index++;
         AssetDatabase.CreateAsset(clone, $"{basePath}/{name}.asset");
         return clone;
     }
