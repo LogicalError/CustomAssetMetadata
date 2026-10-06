@@ -23,6 +23,30 @@ public class MetadataLookupPreprocessBuild : IPreprocessBuildWithReport
         return clone;
     }
 
+    /// <summary>Returns the asset path of every material in the project.</summary>
+    public static List<string> MaterialPaths() // TODO: support more than just materials
+    {
+        var paths = new List<string>();
+        foreach (var guid in AssetDatabase.FindAssets("t:Material"))
+            paths.Add(AssetDatabase.GUIDToAssetPath(guid));
+        return paths;
+    }
+
+    /// <summary>Returns all metadata sub-assets stored at the supplied asset paths.</summary>
+    public static List<CustomAssetMetadata> FindMetadata(IEnumerable<string> assetPaths)
+    {
+        var metadata = new List<CustomAssetMetadata>();
+        foreach (var assetPath in assetPaths)
+        {
+            foreach (var item in AssetDatabase.LoadAllAssetsAtPath(assetPath))
+            {
+                if (item is CustomAssetMetadata found)
+                    metadata.Add(found);
+            }
+        }
+        return metadata;
+    }
+
     public void OnPreprocessBuild(BuildReport report)
     {
         const string basePath = "Assets/Resources/" + MetadataLookup.kResourcePath;
@@ -35,17 +59,7 @@ public class MetadataLookupPreprocessBuild : IPreprocessBuildWithReport
 
         var allMetadata = new List<CustomAssetMetadata>();
 
-        var allPaths = UnityEditor.AssetDatabase.FindAssets($"t:Material"); // TODO: support more than just materials
-        foreach(var assetPath in allPaths)
-        {         
-            foreach (var item in UnityEditor.AssetDatabase.LoadAllAssetRepresentationsAtPath(assetPath))
-            {
-                if (item is not CustomAssetMetadata metadata)
-                    continue;
-                allMetadata.Add(metadata);
-            }
-            UnityEditor.EditorUtility.UnloadUnusedAssetsImmediate();
-        }
+        allMetadata.AddRange(FindMetadata(MaterialPaths()));
 
         // This doesn't work since Resources.FindObjectsOfTypeAll only works on 
         // assets currently loaded into memory.		

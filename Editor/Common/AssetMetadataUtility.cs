@@ -157,6 +157,8 @@ public static class AssetMetadataUtility
 			AssetDatabase.AddObjectToAsset(assetMetadata, assetPath);
             AssetDatabase.ImportAsset(assetPath);
             AssetDatabase.Refresh();
+            // OnEnable runs before the reference is assigned, so register explicitly.
+            MetadataLookup.Register(target, assetMetadata);
             return assetMetadata;
         }
 
@@ -204,6 +206,9 @@ public static class AssetMetadataUtility
         var assetPath = AssetDatabase.GetAssetPath(metadata);
         if (assetPath == null)
             return;
+
+        // Unregister before removing the sub-asset, while its reference still resolves.
+        MetadataLookup.Unregister(metadata.reference, metadata);
 
         AssetDatabase.RemoveObjectFromAsset(metadata);
         UnityEngine.Object.DestroyImmediate(metadata); // we need to destroy it otherwise it'll be saved to the scene
