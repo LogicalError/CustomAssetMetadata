@@ -51,30 +51,28 @@ public class MetadataLookupPreprocessBuild : IPreprocessBuildWithReport
     {
         const string basePath = "Assets/Resources/" + MetadataLookup.kResourcePath;
         AssetDatabase.StartAssetEditing();
-        HadResourcesDirectory = System.IO.Directory.Exists("Assets/Resources/");
-        if (System.IO.Directory.Exists(basePath))
-            System.IO.Directory.Delete(basePath, true);
-        System.IO.Directory.CreateDirectory(basePath);
-        var list = ScriptableObject.CreateInstance<MetadataLookupAsset>();
-
-        var allMetadata = new List<CustomAssetMetadata>();
-
-        allMetadata.AddRange(FindMetadata(MaterialPaths()));
-
-        // This doesn't work since Resources.FindObjectsOfTypeAll only works on 
-        // assets currently loaded into memory.		
-        //allMetadata.AddRange(Resources.FindObjectsOfTypeAll<CustomAssetMetadata>());
-
-        int index = 0;
-        for (int i = 0; i < allMetadata.Count; i++)
+        try
         {
-            allMetadata[i] = CloneCustomAssetMetadata(allMetadata[i], basePath, ref index);
-        }
-        UnityEditor.EditorUtility.UnloadUnusedAssetsImmediate();
+            HadResourcesDirectory = System.IO.Directory.Exists("Assets/Resources/");
+            if (System.IO.Directory.Exists(basePath))
+                System.IO.Directory.Delete(basePath, true);
+            System.IO.Directory.CreateDirectory(basePath);
+            var list = ScriptableObject.CreateInstance<MetadataLookupAsset>();
 
-        list.allMetadata = allMetadata.ToArray();
-        AssetDatabase.CreateAsset(list, $"{basePath}/{MetadataLookup.kAssetName}.asset");
-        AssetDatabase.StopAssetEditing();
+            var allMetadata = new List<CustomAssetMetadata>();
+            allMetadata.AddRange(FindMetadata(MaterialPaths()));
+
+            int index = 0;
+            for (int i = 0; i < allMetadata.Count; i++)
+                allMetadata[i] = CloneCustomAssetMetadata(allMetadata[i], basePath, ref index);
+
+            list.allMetadata = allMetadata.ToArray();
+            AssetDatabase.CreateAsset(list, $"{basePath}/{MetadataLookup.kAssetName}.asset");
+        }
+        finally
+        {
+            AssetDatabase.StopAssetEditing();
+        }
     }
 
 }
@@ -87,25 +85,31 @@ public class MetadataLookupPostprocessBuild : IPostprocessBuildWithReport
     public void OnPostprocessBuild(BuildReport report)
     {
         AssetDatabase.StartAssetEditing();
-        if (!MetadataLookupPreprocessBuild.HadResourcesDirectory)
+        try
         {
-            const string basePath = "Assets/Resources";
-            if (System.IO.Directory.Exists(basePath))
-                System.IO.Directory.Delete(basePath, true);
+            if (!MetadataLookupPreprocessBuild.HadResourcesDirectory)
+            {
+                const string basePath = "Assets/Resources";
+                if (System.IO.Directory.Exists(basePath))
+                    System.IO.Directory.Delete(basePath, true);
 
-            const string metaFile = basePath + ".meta";
-            if (System.IO.File.Exists(metaFile))
-                System.IO.File.Delete(metaFile);
-        } else
-        {
-            const string basePath = "Assets/Resources/" + MetadataLookup.kResourcePath;
-            if (System.IO.Directory.Exists(basePath))
-                System.IO.Directory.Delete(basePath, true);
+                const string metaFile = basePath + ".meta";
+                if (System.IO.File.Exists(metaFile))
+                    System.IO.File.Delete(metaFile);
+            } else
+            {
+                const string basePath = "Assets/Resources/" + MetadataLookup.kResourcePath;
+                if (System.IO.Directory.Exists(basePath))
+                    System.IO.Directory.Delete(basePath, true);
 
-            const string metaFile = basePath + ".meta";
-            if (System.IO.File.Exists(metaFile))
-                System.IO.File.Delete(metaFile);
+                const string metaFile = basePath + ".meta";
+                if (System.IO.File.Exists(metaFile))
+                    System.IO.File.Delete(metaFile);
+            }
         }
-        AssetDatabase.StopAssetEditing();
+        finally
+        {
+            AssetDatabase.StopAssetEditing();
+        }
     }
 }

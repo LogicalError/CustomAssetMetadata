@@ -214,6 +214,29 @@ namespace AssetMetadata.Tests
 			Assert.That(MetadataLookupPreprocessBuild.FindMetadata(new[] { materialPath }), Has.Member(metadata));
 		}
 
+		[Test]
+		public void Build_CreatesPersistentLookupAsset()
+		{
+			AddTestMetadata(material, 3);
+			AssetDatabase.SaveAssets();
+
+			var preprocess = new MetadataLookupPreprocessBuild();
+			try
+			{
+				preprocess.OnPreprocessBuild(null);
+				var lookupPath = $"Assets/Resources/{MetadataLookup.kResourcePath}/{MetadataLookup.kAssetName}.asset";
+				var lookup = AssetDatabase.LoadAssetAtPath<MetadataLookupAsset>(lookupPath);
+				Assert.That(lookup, Is.Not.Null, "the generated lookup was not saved as an asset");
+				Assert.That(lookup.allMetadata, Has.Some.Matches<CustomAssetMetadata>(item =>
+					item != null && item.reference.entityId == material.GetEntityId()));
+			}
+			finally
+			{
+				new MetadataLookupPostprocessBuild().OnPostprocessBuild(null);
+				AssetDatabase.Refresh();
+			}
+		}
+
 		// --- values ----------------------------------------------------------------------------
 
 		[Test]
